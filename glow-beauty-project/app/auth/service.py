@@ -2,11 +2,11 @@
 from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
 from datetime import datetime, timedelta
-from auth import models, schemas, utils
-from auth.models import User, EmailVerification,UserRole
-from auth.schemas import SignUpRequest, UserOut ,SignUpResponse
-from auth.utils import hash_password
-from core.config import settings
+from app.auth import models, schemas, utils
+from app.auth.models import User, EmailVerification,UserRole
+from app.auth.schemas import SignUpRequest, UserOut ,SignUpResponse
+from app.auth.utils import hash_password
+from app.core.config import settings
 import os
 import datetime
 

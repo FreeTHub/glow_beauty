@@ -1,6 +1,6 @@
 from fastapi import FastAPI
-from auth import routes
-from core.config import settings
+from app.auth import routes
+from app.core.config import settings
 
 app = FastAPI()
 
