@@ -1,0 +1,33 @@
+glow-beauty-project/
+│
+├── alembic/                   # Alembic migration scripts
+│
+├── app/
+│   ├── __init__.py
+│   │
+│   ├── auth/                  # Authentication-related logic
+│   │   ├── __init__.py
+│   │   ├── dependencies.py    # Auth dependencies (e.g., get_current_user)
+│   │   ├── models.py          # SQLAlchemy models: RefreshToken, PasswordReset
+│   │   ├── router.py          # FastAPI routes for login, signup, token, etc.
+│   │   ├── schemas.py         # Pydantic schemas: Token, UserLogin, etc.
+│   │   ├── service.py         # Auth business logic (e.g., token creation)
+│   │   ├── utils.py           # Helper functions (e.g., hashing, verification)
+│   │
+│   ├── core/                  # Application-wide shared logic
+│   │   ├── __init__.py
+│   │   ├── database.py        # SQLAlchemy session, engine setup
+│   │   ├── logger.py          # Logging setup
+│   │   ├── models.py          # Shared/global models (e.g., User)
+│   │   ├── schemas.py         # Shared/global schemas
+│   │
+│   ├── main.py                # FastAPI app initialization
+│
+├── tests/                     # Unit and integration tests
+│
+├── docs/                      # API documentation or markdown files
+│
+├── .vscode/                   # VSCode workspace configs
+├── alembic.ini                # Alembic config
+├── requirements.txt           # Python package dependencies
+└── README.md

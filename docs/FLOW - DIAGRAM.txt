@@ -1,0 +1,67 @@
+==========================
+        AUTH FLOW
+==========================
+
+1) USER SIGNUP:
+   - User submits email & password
+   - Validate input
+   - Hash password securely
+   - Create user in DB (is_verified = False)
+   - Generate email verification token
+   - Send verification email with token
+   - User clicks verification link → Activate account
+
+-----------------------------------------------------
+
+2) USER LOGIN:
+   - User submits email & password
+   - Verify password hash
+   - Check if user is active, verified, and not locked
+   - IF 2FA enabled:
+       a) OTP enabled:
+          - Generate OTP code
+          - Send OTP via Email/SMS
+          - User submits OTP code
+          - Verify OTP (check expiry & usage)
+       b) Fingerprint enabled:
+          - User scans fingerprint on device
+          - Send fingerprint template (hashed/encrypted) to server
+          - Compare with stored fingerprint template
+   - On successful verification:
+       - Generate JWT access token + refresh token
+       - Return tokens to user
+       - Log successful login
+       - Reset failed login counter
+   - On failure:
+       - Increment failed login attempts
+       - Lock account temporarily if max attempts exceeded
+
+-----------------------------------------------------
+
+3) ACCESS PROTECTED RESOURCE:
+   - User sends request with JWT access token
+   - Validate JWT token and expiry
+   - Load user and user roles
+   - Check if user has required role(s) for endpoint
+   - If authorized → Allow access
+   - Else → Return 403 Forbidden
+
+-----------------------------------------------------
+
+4) PASSWORD RESET:
+   - User requests password reset (email)
+   - Generate reset token and store
+   - Send reset email with token link
+   - User clicks link, submits new password
+   - Verify token validity
+   - Hash new password and update user record
+
+-----------------------------------------------------
+
+5) REFRESH TOKEN:
+   - User sends refresh token to refresh endpoint
+   - Validate refresh token (not revoked, not expired)
+   - Issue new JWT access token (and optionally new refresh token)
+   - Revoke old refresh token if rotating tokens
+
+==================================================

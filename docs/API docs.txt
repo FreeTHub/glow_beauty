@@ -1,0 +1,113 @@
+✅ Phase 1: User Registration & Authentication APIs
+=================================================================############======================================================================
+1. Signup (Register a new user)
+POST /auth/signup
+➡️ Save user, hash password, create default role if needed, optionally send verification email.
+
+2. Login
+POST /auth/login
+➡️ Validate credentials → create access/refresh tokens → log login attempt → store RefreshToken.
+
+3. Token Refresh
+POST /auth/token/refresh
+➡️ Validate refresh_token → issue new access token → rotate token if needed.
+
+4. Logout
+POST /auth/logout
+➡️ Revoke refresh token.
+
+5. Send Email Verification Code
+POST /auth/email/send-verification
+➡️ Generate + save EmailVerification → send email.
+
+6. Verify Email
+POST /auth/email/verify
+➡️ Check token validity → mark user as verified.
+
+7. Send OTP Code (SMS or Email)
+POST /auth/otp/send
+➡️ Create OtpCode, send it.
+
+8. Verify OTP Code
+POST /auth/otp/verify
+➡️ Validate OTP, expire it, mark verified if needed.
+
+🔐 Phase 2: Password & Security
+9. Request Password Reset
+POST /auth/password/reset-request
+➡️ Create PasswordReset token → send via email.
+
+10. Reset Password with Token
+POST /auth/password/reset
+➡️ Validate token → set new password.
+
+11. Change Password (Authenticated)
+POST /auth/password/change
+➡️ Authenticated user changes password.
+
+12. Enable 2FA (TOTP or SMS)
+POST /auth/2fa/enable
+➡️ Save secret, enable flag.
+
+13. Verify 2FA Code (During login or setup)
+POST /auth/2fa/verify
+➡️ Validate TOTP or SMS.
+
+🔍 Phase 3: Activity & Audit APIs
+14. Get Login History
+GET /auth/logins
+➡️ List of entries from UserLogin.
+
+15. Get Active Refresh Tokens
+GET /auth/tokens
+➡️ Show currently valid RefreshToken sessions.
+
+16. Revoke Specific Refresh Token (Session)
+DELETE /auth/token/{token_id}
+➡️ Log out a specific device.
+
+17. Get Profile
+GET /users/me
+➡️ Return current user info from token.
+
+18. Update Profile
+PUT /users/me
+➡️ Update name, phone number, etc.
+
+============================================================#============================================================================================
+🧩 Bonus (Optional / Enterprise Features)
+Role Assignment: POST /admin/assign-role
+
+Fingerprint Save/Compare: POST /auth/fingerprint
+
+Account Locking / Unblocking
+
+Device ID Blacklisting
+
+Geo-based alerts for login attempts
+
+
+#############################################################################APIS###########################################################################
+✅ POST /auth/signup
+
+✅ POST /auth/login
+
+✅ POST /auth/token/refresh
+
+✅ POST /auth/logout
+
+✅ POST /auth/email/send-verification
+
+✅ POST /auth/email/verify
+
+✅ POST /auth/password/reset-request
+
+✅ POST /auth/password/reset
+
+✅ POST /auth/password/change
+
+✅ GET /auth/logins
+
+✅ GET /users/me
+
+✅ PUT /users/me
