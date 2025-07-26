@@ -11,7 +11,7 @@ class Settings(BaseSettings):
 
     # Basic App Settings
     DATABASE_URL: str
-    # SECRET_KEY: str
+    SECRET_KEY: str
     DEBUG: bool = False
     PROJECT_NAME: str = "FastAPI Project"
     ENV: str = "development"
