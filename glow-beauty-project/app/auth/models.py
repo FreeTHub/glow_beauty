@@ -1,7 +1,7 @@
 """ Models Declaration Here """
 
 from sqlalchemy import (
-    Column, Integer, String, Boolean, ForeignKey, BigInteger, Date, Text, DateTime
+    Column, Integer, String, Boolean, ForeignKey, BigInteger, Date, Text, DateTime,Identity 
 )
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
@@ -33,7 +33,7 @@ class User(RWModel):
     password_resets = relationship("PasswordReset", back_populates="user", cascade="all, delete-orphan")
     refresh_tokens = relationship("RefreshToken", back_populates="user", cascade="all, delete-orphan")
     login_attempts = relationship("LoginAttempt", back_populates="user", cascade="all, delete-orphan")
-    otp_codes = relationship("OtpCode", back_populates="user", cascade="all, delete-orphan")
+    # otp_codes = relationship("OtpCode", back_populates="user", cascade="all, delete-orphan")
     user_logins = relationship("UserLogin", back_populates="user", cascade="all, delete-orphan")
 
 
@@ -49,9 +49,9 @@ class Role(RWModel):
 class UserRole(Base):
     __tablename__ = 'user_roles'
 
-    id = Column(BigInteger, primary_key=True, autoincrement=True)
-    user_id = Column(BigInteger, ForeignKey('users.id'), primary_key=True)
-    role_id = Column(BigInteger, ForeignKey('roles.id'), primary_key=True)
+    id = Column(BigInteger, Identity(always=True), primary_key=True)
+    user_id = Column(BigInteger, ForeignKey('users.id'), primary_key=True,nullable=False)
+    role_id = Column(BigInteger, ForeignKey('roles.id'), primary_key=True,nullable=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
 
     user = relationship("User", back_populates="roles")
@@ -110,13 +110,14 @@ class LoginAttempt(RWModel):
 class OtpCode(RWModel):
     __tablename__ = 'otp_codes'
 
-    user_id = Column(BigInteger, ForeignKey('users.id'), nullable=False)
+    # user_id = Column(BigInteger, ForeignKey('users.id'), nullable=False)
+    email = Column(String(255),nullable=False, index=True)
     otp_code = Column(String(10), nullable=False)
     expires_at = Column(DateTime(timezone=True), nullable=False)
     used = Column(Boolean, default=False)
     method = Column(String(20), nullable=False)  # e.g., email, sms, app
 
-    user = relationship("User", back_populates="otp_codes")
+    # user = relationship("User", back_populates="otp_codes")
 
 
 class UserLogin(RWModel):
