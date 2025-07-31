@@ -53,7 +53,7 @@ def create_access_token(data: dict):
     expire = datetime.now(timezone.utc) + timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
     to_encode.update({
         "type": "access",
-        "exp": expire  # ✅ Standard JWT claim
+        "exp": expire  
     })
     logger.info(f"private key: {settings.PRIVATE_KEY}=== algorithm: {settings.ALGORITHM} === data: {to_encode} === expire: {expire}")
     return jwt.encode(to_encode, settings.PRIVATE_KEY, algorithm=settings.ALGORITHM)
@@ -64,7 +64,7 @@ def create_refresh_token(data: dict):
     logger.info(f"Creating refresh token with data: {to_encode} and expire time: {expire}")
     to_encode.update({
         "type": "refresh",
-        "exp": expire  # ✅ Standard JWT claim
+        "exp": expire  
     })  
     return jwt.encode(to_encode, settings.PRIVATE_KEY, algorithm=settings.ALGORITHM)
 

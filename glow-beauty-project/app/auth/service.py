@@ -4,7 +4,7 @@ from app.core.jwt import  create_access_token, create_refresh_token, verify_toke
 from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
 from app.auth import models, schemas, utils
-from app.auth.models import LoginAttempt, OtpCode, RefreshToken, User, EmailVerification,UserRole
+from app.auth.models import LoginAttempt, OtpCode, RefreshToken, Role, User, EmailVerification,UserRole
 from app.auth.schemas import LoginRequest, LoginResponse, SignUpRequest, SignUpVerifyRequest, UserOut ,SignUpResponse
 from app.auth.utils import generate_otp, get_client_ip, get_user_agent, hash_password, hash_token, store_otp_email, verify_password
 from app.core.config import settings
@@ -377,7 +377,7 @@ async def final_signup(user_data:SignUpVerifyRequest, db: Session) -> SignUpResp
 #         traceback.print_exc()
 #         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Unexpected error during login.")
 
-
+from sqlalchemy.orm import aliased
 async def login(user_data: LoginRequest, request: Request, db: Session) -> LoginResponse:
     """
     Authenticate user and return access + refresh tokens.
@@ -439,9 +439,20 @@ async def login(user_data: LoginRequest, request: Request, db: Session) -> Login
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="User account is inactive."
             )
+        role_row = (
+        db.query(Role.name)
+        .join(UserRole, Role.id == UserRole.role_id)
+        .join(User, User.id == UserRole.user_id)
+        .filter(User.email == user_data.email)
+        .first()
+    )
 
+        role_name = role_row[0] if role_row else None
+        logger.info(f"Role==>{role_name}")
         # Generate access token
-        access_token = create_access_token(data={"sub": user.email,"role":"admin"})
+        access_token = create_access_token(data=
+                                           {"sub": user.email,"role":role_name,
+                                            "name":user.full_name})
 
         # Revoke old refresh token if any
         device_id = request.headers.get("Device-ID")
@@ -457,7 +468,8 @@ async def login(user_data: LoginRequest, request: Request, db: Session) -> Login
             db.commit()
 
         # Create new refresh token
-        raw_refresh_token = create_refresh_token(data={"sub": user.email})
+        raw_refresh_token = create_refresh_token(data={"sub": user.email,"role":role_name,
+                                            "name":user.full_name})
         hashed_refresh_token = hash_token(raw_refresh_token)
         expired_at = datetime.now(timezone.utc) + timedelta(minutes=settings.REFRESH_TOKEN_EXPIRE_DAYS)
         logger.info(f"expires_at: {expired_at}")
@@ -548,8 +560,19 @@ async def refresh_access_token(refresh_token: str, request: Request, db: Session
     stored_token.revoked = True
     logger.info(f"Revoking old token: {stored_token.token}")
     # Issue new token
-    new_access_token = create_access_token({"sub": user.email})
-    new_refresh_token_raw = create_refresh_token({"sub": user.email})
+    role_row = (
+        db.query(Role.name)
+        .join(UserRole, Role.id == UserRole.role_id)
+        .join(User, User.id == UserRole.user_id)
+        .filter(User.email == user.email)
+        .first()
+    )
+
+    role_name = role_row[0] if role_row else None
+    new_access_token = create_access_token({"sub": user.email,"role":user.roles,
+                                            "name":user.full_name})
+    new_refresh_token_raw = create_refresh_token({"sub": user.email,"role":user.roles,
+                                            "name":user.full_name})
     new_hashed = hash_token(new_refresh_token_raw)
     logger.info(f"New refresh token created: {new_hashed}")
     new_refresh = RefreshToken(
