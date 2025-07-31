@@ -569,9 +569,9 @@ async def refresh_access_token(refresh_token: str, request: Request, db: Session
     )
 
     role_name = role_row[0] if role_row else None
-    new_access_token = create_access_token({"sub": user.email,"role":user.roles,
+    new_access_token = create_access_token({"sub": user.email,"role":role_name,
                                             "name":user.full_name})
-    new_refresh_token_raw = create_refresh_token({"sub": user.email,"role":user.roles,
+    new_refresh_token_raw = create_refresh_token({"sub": user.email,"role":role_name,
                                             "name":user.full_name})
     new_hashed = hash_token(new_refresh_token_raw)
     logger.info(f"New refresh token created: {new_hashed}")
