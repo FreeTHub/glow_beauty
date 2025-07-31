@@ -25,8 +25,8 @@ class Settings(BaseSettings):
     APP_TAGS: str = "[]"
 
     # JWT Expiry Settings
-    REFRESH_TOKEN_EXPIRE_DAYS: int = 2
-    ACCESS_TOKEN_EXPIRE_MINUTES: int = 1
+    REFRESH_TOKEN_EXPIRE_DAYS: int = 60
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 15
 
     # Class-level constants
     ALGORITHM: ClassVar[str] = 'RS256'

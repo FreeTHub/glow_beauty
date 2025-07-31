@@ -440,7 +440,7 @@ async def login(user_data: LoginRequest, request: Request, db: Session) -> Login
             )
 
         # Generate access token
-        access_token = create_access_token(data={"sub": user.email})
+        access_token = create_access_token(data={"sub": user.email,"role":"admin"})
 
         # Revoke old refresh token if any
         device_id = request.headers.get("Device-ID")
