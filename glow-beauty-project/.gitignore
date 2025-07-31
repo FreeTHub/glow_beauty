@@ -4,11 +4,13 @@ __pycache__/
 *$py.class
 
 # Virtual environments
+#Python virtual environments
 venv/
 .venv/
-venv/*
-venv.*
 env/
+ENV/
+*.env
+*.venv
 
 # Alembic migrations (optional)
 alembic/versions/

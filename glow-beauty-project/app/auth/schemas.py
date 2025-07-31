@@ -74,6 +74,7 @@ class SignUpVerifyRequest(UserCreate): #SignUpRequest
     
 class SignUpRequest(BaseModel):  #SignUpVerifyRequest
     email: EmailStr
+    name:str
     password: str
     phone_no: int
     @field_validator("phone_no")
