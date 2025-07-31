@@ -16,7 +16,7 @@ class User(RWModel):
     __tablename__ = "users"
 
     email = Column(String(255), unique=True, nullable=False, index=True)
-    name=Column(String(255),nullable=False)
+    full_name=Column(String(255),nullable=False)
     phone_no = Column(BigInteger, unique=True, nullable=False, index=True)
     password = Column(String(255), nullable=False)
     is_active = Column(Boolean, default=True, nullable=False)

@@ -34,7 +34,7 @@ def store_otp_email(email:str,otp:str,db,expiry:int=300):
     # r.setex(f"otp:{email}",expiry,otp)
     expiry_time = datetime.now(timezone.utc) + timedelta(seconds=expiry)
     otp_record = OtpCode(email=email,otp_code=otp,
-            expires_at=expiry_time,created_at=datetime.now(timezone.utc),method="sinnup_email")
+            expires_at=expiry_time,created_at=datetime.now(timezone.utc),method="signup_email")
     logger.info(f"================= OK FINE ======================")
     db.add(otp_record)
     db.commit()

@@ -182,7 +182,7 @@ async def final_signup(user_data:SignUpVerifyRequest, db: Session) -> SignUpResp
         # 2) Check if OTP exists and is valid
         check_otp = db.query(OtpCode).filter(
             OtpCode.email == user_data.email,
-            OtpCode.method == "sinnup_email",
+            OtpCode.method == "signup_email",
             OtpCode.used == False,
             OtpCode.expires_at > datetime.now(timezone.utc)
         ).first()
@@ -213,6 +213,7 @@ async def final_signup(user_data:SignUpVerifyRequest, db: Session) -> SignUpResp
         # 1) Create user instance
         new_user = User(
             email=user_data.email,
+            full_name = user_data.full_name,
             phone_no=user_data.phone_no,
             password=hash_password(user_data.password),
             is_active=True,
