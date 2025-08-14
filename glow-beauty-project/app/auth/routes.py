@@ -130,9 +130,31 @@ async def refresh_token(
             detail=f"Token refresh failed: {str(e)}"
         )
 
-
-
 @router.get("/dashboard")
 async def dashboard(request: Request):
    
     return {"message": f"Welcome to Dashboard !"}
+
+@router.get("/getapilogindetails",
+            summary="Get Login Details",
+            status_code=status.HTTP_200_OK,
+            response_model=schemas.GetLoginResponse
+            )
+async def getlogin_details(
+    request:Request,
+    db: Session=Depends(get_db)
+    ):    
+    try:
+        result=await service.get_service_logindetails(
+            request=request,
+            db=db
+        )
+        return result
+    except HTTPException as http_exc:
+        raise http_exc
+    except Exception as e :
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Fetch Login Details Failed {str(e)}"
+        )
+    
