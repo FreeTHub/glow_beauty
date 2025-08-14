@@ -136,3 +136,21 @@ class RefreshTokenResponse(BaseModel):
     model_config = {
         "from_attributes": True
     }
+#-------------------- Get Login Details -------------------------
+class GetLoginRequest(BaseModel):
+    access_token: str
+
+class GetLoginResponse(BaseModel):
+    status: str
+    message: str
+    name: str
+    email: EmailStr
+    role: str
+    phone_no: int
+    is_active: bool
+    is_verified_phone: bool
+    failed_logins: int
+    lock_until: datetime
+    fingerprint_template: str
+
+
