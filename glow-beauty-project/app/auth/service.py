@@ -594,3 +594,13 @@ async def refresh_access_token(refresh_token: str, request: Request, db: Session
     "refresh_token": new_refresh_token_raw,
     "token_type": "bearer"
 }
+
+async def get_service_logindetails(request: Request,db: Session):
+    logger.info("=========== fetch API login details started ===========")
+    access_token = request.headers.get("Authorization")
+   # original_token = access_token[:7]
+    logger.info(access_token[7:])
+    payload = verify_token(access_token)
+    logger.info(f"Token Payload{payload}")
+
+    return access_token
