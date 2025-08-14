@@ -26,7 +26,7 @@ class Settings(BaseSettings):
 
     # JWT Expiry Settings
     REFRESH_TOKEN_EXPIRE_DAYS: int = 60
-    ACCESS_TOKEN_EXPIRE_MINUTES: int = 15
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 60
 
     # Class-level constants
     ALGORITHM: ClassVar[str] = 'RS256'
