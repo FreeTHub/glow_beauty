@@ -119,6 +119,14 @@ class LoginResponse(BaseModel):
         "from_attributes": True
     }
 
+# ------------------ Logout Response ------------------
+class LogoutResponse(BaseModel):
+    status: str
+    message: str
+
+    model_config = {
+        "from_attributes": True
+    }
 
 # ------------------ Sign Up Response ------------------
 class SignUpResponse(BaseModel):
