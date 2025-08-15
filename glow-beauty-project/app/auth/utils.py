@@ -30,11 +30,11 @@ def verify_password(plain: str, hashed: str) -> bool:
 def generate_otp(length: int = 6) -> str:
     return ''.join(secrets.choice('0123456789') for _ in range(length))
 
-def store_otp_email(email:str,otp:str,db,expiry:int=300):
+def store_otp_email(email:str,otp:str,db,method:str,expiry:int=300):
     # r.setex(f"otp:{email}",expiry,otp)
     expiry_time = datetime.now(timezone.utc) + timedelta(seconds=expiry)
     otp_record = OtpCode(email=email,otp_code=otp,
-            expires_at=expiry_time,created_at=datetime.now(timezone.utc),method="signup_email")
+            expires_at=expiry_time,created_at=datetime.now(timezone.utc),method=method,used=False)
     logger.info(f"================= OK FINE ======================")
     db.add(otp_record)
     db.commit()
