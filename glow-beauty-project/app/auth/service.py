@@ -659,3 +659,65 @@ async def refresh_access_token(refresh_token: str, request: Request, db: Session
     "refresh_token": new_refresh_token_raw,
     "token_type": "bearer"
 }
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+security = HTTPBearer() 
+async def logout(
+    request: Request,
+    db: Session ,
+    token: HTTPAuthorizationCredentials = Depends(security)  # extract token from Authorization header
+) -> JSONResponse:
+    """
+    Logout the user by invalidating the refresh token.
+    """
+    try:
+        refresh_token = token.credentials  # get raw token string
+        logger.info(f"Attempting logout for token: {refresh_token}")
+
+        if not refresh_token:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Refresh token is required"
+            )
+
+        logger.info("Starting logout process...")
+
+        # Hash the incoming token
+        hashed_token = hash_token(refresh_token)
+        logger.info(f"Hashed token: {hashed_token}")
+        
+        # Query the database for this token (only unrevoked tokens)
+        stored_token = (
+            db.query(RefreshToken)
+            .filter_by(token=hashed_token, revoked=False)
+            .first()
+        )
+        logger.info(f"Stored token found: {stored_token}")
+        
+        # If token is found, revoke it
+        if not stored_token or stored_token.revoked:
+            logger.warning("No valid refresh token found for logout.")
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Refresh token not found or already revoked"
+            )
+
+        stored_token.revoked = True
+        stored_token.revoked_at = datetime.utcnow()  # store revocation time
+        db.commit()
+        logger.info(f"Refresh token revoked at {stored_token.revoked_at}")
+    
+
+        # Return generic success response
+        return JSONResponse(
+            status_code=status.HTTP_200_OK,
+            content={"status": "success", "message": "Logged out successfully"}
+        )
+
+    except HTTPException as http_exc:
+        raise http_exc
+    except Exception as e:
+        logger.error(f"Logout failed: {str(e)}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Internal server error"
+        )
