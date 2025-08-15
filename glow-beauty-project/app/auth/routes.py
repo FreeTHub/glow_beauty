@@ -99,7 +99,33 @@ async def login(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Login failed: {str(e)}"
         )
-    
+
+@router.post(
+    "/auth/loginotp_request",
+    summary="User Login request with OTP",
+    status_code=status.HTTP_200_OK,
+    # response_model=JSONResponse
+)
+async def loginotprequest(    
+    data: schemas.LogOTPRequest,
+    requset: Request, 
+    db: Session = Depends(get_db)
+):
+    """
+    Authenticate user and return access and refresh tokens. 
+      """
+    try:
+        result = await service.loginotprequest_service(data,requset, db)
+        return result
+    except HTTPException as http_exc:
+        raise http_exc
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Login failed: {str(e)}"
+        )
+
+
 @router.post(
     "/auth/refresh_token",
     summary="Refresh Access Token",
