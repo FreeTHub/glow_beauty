@@ -33,9 +33,14 @@ class AuthMiddleware(BaseHTTPMiddleware):
             if is_expired:
                 raise ExpiredSignatureError("Access token has expired")
             payload = verify_token(token)
+            
             if not payload:
                 logger.info("Invalid access token")
                 return JSONResponse(status_code=401, content={"detail": "Invalid access token / token expired"})
+
+            if payload.get("type") != "access":
+                return JSONResponse(status_code=401, content={"detail": "Invalid token type"})
+
             logger.info(f"Access token payload: {payload}")
             request.state.user_id = payload.get("sub")
             request.state.roles = payload.get("roles", [])
