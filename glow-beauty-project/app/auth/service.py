@@ -5,7 +5,7 @@ from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
 from app.auth import models, schemas, utils
 from app.auth.models import LoginAttempt, OtpCode, RefreshToken, Role, User, EmailVerification,UserRole
-from app.auth.schemas import LoginRequest, LoginResponse, SignUpRequest, SignUpVerifyRequest, UserOut ,SignUpResponse
+from app.auth.schemas import GetLoginResponse, LoginRequest, LoginResponse, SignUpRequest, SignUpVerifyRequest, UserOut ,SignUpResponse
 from app.auth.utils import generate_otp, get_client_ip, get_user_agent, hash_password, hash_token, store_otp_email, verify_password
 from app.core.config import settings
 from sqlalchemy.exc import SQLAlchemyError
@@ -540,7 +540,7 @@ async def refresh_access_token(refresh_token: str, request: Request, db: Session
         raise HTTPException(status_code=401, detail="Invalid refresh token")
 
     hashed = hash_token(refresh_token)
-    logger
+   
     stored_token = db.query(RefreshToken).filter_by(token=hashed, revoked=False).first()
     logger.info(f"Stored token: {stored_token}")
 
@@ -601,6 +601,35 @@ async def get_service_logindetails(request: Request,db: Session):
    # original_token = access_token[:7]
     logger.info(access_token[7:])
     payload = verify_token(access_token)
-    logger.info(f"Token Payload{payload}")
+    logger.info(f"Token Payload : {payload}")
+    if not payload:
+        logger.error("===========Invalid access token===========")
+        raise HTTPException(status_code=401,detail="Invalid access token")
+    
+    logger.info(f"expiry time {payload['exp']}")
+    exp_time=datetime.fromtimestamp(payload['exp'],tz=timezone.utc)
+    now=datetime.now(timezone.utc)
+    logger.info(f"current time {now} and expiry time {exp_time}")
 
-    return access_token
+    if now>exp_time :
+        logger.error("=========== token expired ===========")
+        raise HTTPException(status_code=401,detail="token expired")
+    user_data = db.query(User).filter(User.email == payload.get('sub')).first()
+    logger.info(user_data)
+    if not user_data:
+        raise HTTPException(status_code=404,detail='Use not found')
+    return GetLoginResponse(
+        status="success",
+        message="Login details retrieved successfully",
+        email=payload.get('sub'),
+        name=payload.get('name'),
+        role=payload.get('role'),
+        phone_no=user_data.phone_no,
+        is_active=user_data.is_active,
+        is_verified_phone=user_data.is_verified_phone,
+        failed_logins=user_data.failed_logins,
+        lock_until=user_data.lock_until,
+        fingerprint_template=user_data.fingerprint_template
+        
+        
+    )
