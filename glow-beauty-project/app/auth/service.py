@@ -5,7 +5,7 @@ from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
 from app.auth import models, schemas, utils
 from app.auth.models import LoginAttempt, OtpCode, RefreshToken, Role, User, EmailVerification,UserRole
-from app.auth.schemas import GetLoginResponse, LoginRequest, LoginResponse, SignUpRequest, SignUpVerifyRequest, UserOut ,SignUpResponse
+from app.auth.schemas import LogOTPRequest, GetLoginResponse, LoginRequest, LoginResponse, SignUpRequest, SignUpVerifyRequest, UserOut ,SignUpResponse
 from app.auth.utils import generate_otp, get_client_ip, get_user_agent, hash_password, hash_token, store_otp_email, verify_password
 from app.core.config import settings
 from sqlalchemy.exc import SQLAlchemyError
@@ -69,7 +69,7 @@ async def sign_up(user_data: SignUpRequest, db: Session) -> SignUpResponse:
             ) 
         otp = generate_otp() 
         logger.info(f"Generated OTP for {user_data.email}: {otp}")
-        store_otp_email(user_data.email,otp,db) 
+        store_otp_email(user_data.email,otp,db,method="signup_email") 
         logger.info("=========== In DB OTP Store Successfully ===========")
 
         return JSONResponse(
@@ -529,6 +529,71 @@ async def login(user_data: LoginRequest, request: Request, db: Session) -> Login
             detail="Unexpected error during login."
         )
 
+async def loginotprequest_service(user_data: LogOTPRequest, request: Request, db: Session) -> JSONResponse:
+    """ OTP request."""
+    logger.info("Starting user signup process")
+
+    # 1) Uniqueness checks
+    if not  db.query(User).filter_by(email=user_data.email).first():
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="User is not registered"
+        )
+    # Phone number check is not needed here as we are using email for OTP request 
+    # if not db.query(User).filter_by(phone_no=user_data.phone_no,).first():
+    #     raise HTTPException(
+    #         status_code=status.HTTP_409_CONFLICT,
+    #         detail="Phone number is not  registered"
+    #     )
+
+    try:
+        # OTP verification and other checks can be added her
+        existing_otp = db.query(OtpCode).filter(
+            OtpCode.email == user_data.email,
+            OtpCode.method == "login_email",
+            OtpCode.used == False,
+            OtpCode.expires_at > datetime.now(timezone.utc)
+
+        ).first()
+        
+        if existing_otp:
+            logger.info(f"OTP already exists for {user_data.email}. Cannot proceed with Log In.")
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="OTP already sent to this email. Please verify before Log In."
+            ) 
+        otp = generate_otp() 
+        logger.info(f"Generated OTP for {user_data.email}: {otp}")
+        store_otp_email(user_data.email,otp,db,method="login_email") 
+        logger.info("=========== In DB OTP Store Successfully ===========")
+
+        return JSONResponse(
+            {
+                "status": "otp_sent",
+                "message": "OTP sent to your email. Please verify to complete LogIn"
+            })
+
+    except SQLAlchemyError as e:
+        db.rollback()
+        logger.error("Database error during signup: %s", str(e))
+        traceback.print_exc()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Database error during signup."
+        )
+
+    except HTTPException as http_exc:
+        raise http_exc
+
+    except Exception as e:
+        db.rollback()
+        logger.error("Unexpected error during signup: %s", str(e))
+        traceback.print_exc()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Signup failed due to unexpected server error."
+        )
+
 
 async def refresh_access_token(refresh_token: str, request: Request, db: Session):
     refresh_token = refresh_token
@@ -633,3 +698,65 @@ async def get_service_logindetails(request: Request,db: Session):
         
         
     )
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+security = HTTPBearer() 
+async def logout(
+    request: Request,
+    db: Session ,
+    token: HTTPAuthorizationCredentials = Depends(security)  # extract token from Authorization header
+) -> JSONResponse:
+    """
+    Logout the user by invalidating the refresh token.
+    """
+    try:
+        refresh_token = token.credentials  # get raw token string
+        logger.info(f"Attempting logout for token: {refresh_token}")
+
+        if not refresh_token:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Refresh token is required"
+            )
+
+        logger.info("Starting logout process...")
+
+        # Hash the incoming token
+        hashed_token = hash_token(refresh_token)
+        logger.info(f"Hashed token: {hashed_token}")
+        
+        # Query the database for this token (only unrevoked tokens)
+        stored_token = (
+            db.query(RefreshToken)
+            .filter_by(token=hashed_token, revoked=False)
+            .first()
+        )
+        logger.info(f"Stored token found: {stored_token}")
+        
+        # If token is found, revoke it
+        if not stored_token or stored_token.revoked:
+            logger.warning("No valid refresh token found for logout.")
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Refresh token not found or already revoked"
+            )
+
+        stored_token.revoked = True
+        stored_token.revoked_at = datetime.utcnow()  # store revocation time
+        db.commit()
+        logger.info(f"Refresh token revoked at {stored_token.revoked_at}")
+    
+
+        # Return generic success response
+        return JSONResponse(
+            status_code=status.HTTP_200_OK,
+            content={"status": "success", "message": "Logged out successfully"}
+        )
+
+    except HTTPException as http_exc:
+        raise http_exc
+    except Exception as e:
+        logger.error(f"Logout failed: {str(e)}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Internal server error"
+        )

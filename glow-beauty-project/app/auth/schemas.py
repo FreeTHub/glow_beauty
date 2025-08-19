@@ -87,6 +87,15 @@ class SignUpRequest(BaseModel):
         return v
 
 # ------------------ Login ------------------
+class LogOTPRequest(BaseModel):
+    email: EmailStr
+
+    @field_validator("email")
+    def validate_email(cls, v):
+        if not re.match(r'^[\w\.-]+@[\w\.-]+\.\w+$', str(v)):
+            raise ValueError("Invalid email format")
+        return v
+    
 class LoginRequest(BaseModel):
     email: EmailStr
     password: str
@@ -97,6 +106,7 @@ class LoginRequest(BaseModel):
             raise ValueError("Password must be at least 8 characters long")
         return v
 
+
 # ------------------ Login Response ------------------
 class LoginResponse(BaseModel):
     status: str
@@ -104,6 +114,15 @@ class LoginResponse(BaseModel):
     user: UserOut
     access_token: str
     refresh_token: str
+
+    model_config = {
+        "from_attributes": True
+    }
+
+# ------------------ Logout Response ------------------
+class LogoutResponse(BaseModel):
+    status: str
+    message: str
 
     model_config = {
         "from_attributes": True
