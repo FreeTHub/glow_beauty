@@ -184,5 +184,11 @@ class VerifyLoginOTPRequest(BaseModel):
             raise ValueError("OTP must be a 6-digit number")
         return v
 
-
-
+#--------------------- OTP request for forget password ------------------------
+class ForgetPasswordOTPRequest(BaseModel):
+    email:EmailStr
+    @field_validator("email")
+    def validate_email(cls,v):
+        if not re.match(r'^[\w\.-]+@[\w\.-]+\.\w+$',str(v)):
+            raise ValueError("Invalid Email Format")
+        return v

@@ -236,3 +236,23 @@ async def verify_login_otp(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"OTP verification failed: {str(e)}"
         )
+
+@router.post("/auth/ForgetPassword_OTPRequest",
+             summary="Forget Password Request with OTP",
+             status_code=status.HTTP_200_OK,)
+async def forgetpasswordotprequest(
+    data:schemas.ForgetPasswordOTPRequest,
+    request:Request,
+    db:Session=Depends(get_db)
+) :
+    try :
+        result=await service.forgetpassword_otprequest_service(data,request,db)
+        return result
+    except HTTPException as http_exc:
+        raise http_exc
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"OTP request failed{e}"
+        )
+    

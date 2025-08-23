@@ -5,7 +5,7 @@ from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
 from app.auth import models, schemas, utils
 from app.auth.models import LoginAttempt, OtpCode, RefreshToken, Role, User, EmailVerification,UserRole
-from app.auth.schemas import LogOTPRequest, GetLoginResponse, LoginRequest, LoginResponse, SignUpRequest, SignUpVerifyRequest, UserOut ,SignUpResponse,VerifyLoginOTPRequest
+from app.auth.schemas import LogOTPRequest, GetLoginResponse, LoginRequest, LoginResponse, SignUpRequest, SignUpVerifyRequest, UserOut ,SignUpResponse,VerifyLoginOTPRequest,ForgetPasswordOTPRequest
 from app.auth.utils import generate_otp, get_client_ip, get_user_agent, hash_password, hash_token, store_otp_email, verify_password
 from app.core.config import settings
 from sqlalchemy.exc import SQLAlchemyError
@@ -797,8 +797,9 @@ async def verify_loginwithotp_service(request : VerifyLoginOTPRequest,request1:R
         )
         if not otp_entry :
             logger.error("============ Invalid OTP =============")
-            raise HTTPException(status_code=400, detail="Invalid OTP")  
+            raise HTTPException(status_code=400, detail="Invalid OTP / OTP Already Used ")  
         
+        otp_entry.used = True
         logger.info(" BEFORE ACCESSS TOKEN ")
         # access_token=create_access_token(
         #     {"sub": user.email,"name" : user.name,"role" : user.role},)
@@ -894,3 +895,53 @@ async def verify_loginwithotp_service(request : VerifyLoginOTPRequest,request1:R
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail="Unexpected error during login."
             )
+    
+async def forgetpassword_otprequest_service(user_data:ForgetPasswordOTPRequest,request:Request,db:Session) -> JSONResponse:
+    if not db.query(User).filter(User.email==user_data.email).first():
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="user not registered"
+        )
+    
+    try:
+        existing_otp=db.query(OtpCode).filter(
+            OtpCode.email==user_data.email,
+            OtpCode.method=="forget_otp",
+            OtpCode.used==False,
+            OtpCode.expires_at>datetime.now(timezone.utc)
+        ).first()
+        if existing_otp:
+            logger.info(f"OTP already exist for{user_data.email}.cant proceed")
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="OTP already sent to this email. Please verify before Log In."
+            ) 
+        otp=generate_otp()
+        logger.info(f"generated otp for {user_data.email}:{otp}")
+        store_otp_email(user_data.email,otp,db,method="forget_otp")
+        logger.info("============= OTP stored successfully in DB =============")
+
+        return JSONResponse(
+            {
+                "status":"otp_sent",
+                "message":"otp sent to your mail.please verify to forget password"
+            }
+        )
+    except SQLAlchemyError as e:
+        db.rollback()
+        logger.error("database error during forget password:%s",str(e))
+        traceback.print_exc()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="database error during forget password"
+        )
+    except HTTPException as http_exc:
+        raise http_exc
+    except Exception as e:
+        db.rollback()
+        logger.error("Unexpected error during forget password: %s", str(e))
+        traceback.print_exc()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Forget password failed due to unexpected server error."
+        )
