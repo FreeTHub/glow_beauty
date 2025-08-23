@@ -2,7 +2,7 @@
 
 from datetime import datetime
 from typing import Optional
-from pydantic import BaseModel, EmailStr, Field, field_validator
+from pydantic import BaseModel, EmailStr, Field, field_validator,constr
 import re
 
 # ------------------ Base Schema ------------------
@@ -171,5 +171,18 @@ class GetLoginResponse(BaseModel):
     failed_logins: int
     lock_until: datetime
     fingerprint_template: str
+
+#---------------------- Verification of Login OTP ------------------------
+
+class VerifyLoginOTPRequest(BaseModel):
+    email: EmailStr = Field(..., description="User email")
+    otp: str = Field(..., min_length=6, max_length=6)
+    
+    @field_validator("otp")
+    def validate_otp(cls, v):
+        if not re.match(r'^\d{6}$', str(v)):
+            raise ValueError("OTP must be a 6-digit number")
+        return v
+
 
 

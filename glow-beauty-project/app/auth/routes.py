@@ -151,8 +151,6 @@ async def logout(request: Request,
             detail=f"Logout failed: {str(e)}"
         )
 
-
-
 @router.post(
     "/auth/refresh_token",
     summary="Refresh Access Token",
@@ -210,4 +208,31 @@ async def getlogin_details(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Fetch Login Details Failed {str(e)}"
         )
-    
+
+@router.post("/auth/verifyloginotp",
+             summary="verify user login with OTP",
+             status_code=status.HTTP_200_OK,
+             )
+async def verify_login_otp(
+    request : schemas.VerifyLoginOTPRequest,
+    request1 : Request,
+    db : Session=Depends(get_db)
+    ):
+    try:
+        result=await service.verify_loginwithotp_service(
+            request=request,
+            request1=request1,
+            db=db
+        )
+        return {
+            "status":"success",
+            "message":"OTP verified successfully",
+            "data":result
+        }
+    except HTTPException as http_exc:
+        raise http_exc
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"OTP verification failed: {str(e)}"
+        )
