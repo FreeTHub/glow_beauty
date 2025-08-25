@@ -826,7 +826,7 @@ async def verify_loginwithotp_service(request : VerifyLoginOTPRequest,request1:R
         logger.info(f"Role==>{role_name}")
         
         access_token = create_access_token(data=
-                                            {"sub": user.email,"role":"admin",
+                                            {"sub": user.email,"role":role_name,
                                                 "name":user.full_name})
         logger.info(access_token)
 
@@ -945,3 +945,4 @@ async def forgetpassword_otprequest_service(user_data:ForgetPasswordOTPRequest,r
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Forget password failed due to unexpected server error."
         )
+
