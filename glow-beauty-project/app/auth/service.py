@@ -659,6 +659,7 @@ async def refresh_access_token(refresh_token: str, request: Request, db: Session
     "refresh_token": new_refresh_token_raw,
     "token_type": "bearer"
 }
+
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 security = HTTPBearer() 
 async def logout(
@@ -717,6 +718,61 @@ async def logout(
         raise http_exc
     except Exception as e:
         logger.error(f"Logout failed: {str(e)}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Internal server error"
+        )
+    
+#fingerprint service  
+from passlib.hash import bcrypt
+
+def hash_fingerprint(fingerprint: str) -> str:
+    return bcrypt.hash(fingerprint)
+
+def verify_fingerprint_hash(fingerprint: str, stored_hash: str) -> bool:
+    return bcrypt.verify(fingerprint, stored_hash)
+
+
+async def verify_fingerprint(fingerprint: str, email: str, db: Session) -> JSONResponse:
+    """
+    If fingerprint not stored → save it (hashed).
+    If stored → verify against hash.
+    """
+    try:
+        # 1. Find the user
+        user = db.query(User).filter_by(email=email).first()
+        if not user:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="User not found"
+            )
+
+        # 2. If no fingerprint stored → register new one
+        if not user.fingerprint_template:
+            user.fingerprint_template = hash_fingerprint(fingerprint)
+            db.commit()
+            return JSONResponse(
+                status_code=status.HTTP_200_OK,
+                content={"status": "success", "message": "Fingerprint stored successfully"}
+            )
+
+        # 3. If fingerprint exists → verify
+        if verify_fingerprint_hash(fingerprint, user.fingerprint_template):
+            return JSONResponse(
+                status_code=status.HTTP_200_OK,
+                content={"status": "success", "message": "Fingerprint verified successfully"}
+            )
+
+        # 4. If mismatch
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Fingerprint verification failed"
+        )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Fingerprint verification failed: {str(e)}", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Internal server error"

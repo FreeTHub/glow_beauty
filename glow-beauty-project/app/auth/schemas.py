@@ -155,3 +155,16 @@ class RefreshTokenResponse(BaseModel):
     model_config = {
         "from_attributes": True
     }
+
+#------------------ Fingerprint Schema ------------------
+class FingerprintRequest(BaseModel):
+    fingerprint: str
+    email: EmailStr
+    # user_agent: Optional[str] = None
+    # ip_address: Optional[str] = None
+    @field_validator("fingerprint")
+    def validate_fingerprint(cls, v):
+        if not v:
+            raise ValueError("Invalid fingerprint")
+        return v
+    
