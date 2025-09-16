@@ -192,3 +192,15 @@ class ForgetPasswordOTPRequest(BaseModel):
         if not re.match(r'^[\w\.-]+@[\w\.-]+\.\w+$',str(v)):
             raise ValueError("Invalid Email Format")
         return v
+#------------------ Fingerprint Schema ------------------
+class FingerprintRequest(BaseModel):
+    fingerprint: str
+    email: EmailStr
+    # user_agent: Optional[str] = None
+    # ip_address: Optional[str] = None
+    @field_validator("fingerprint")
+    def validate_fingerprint(cls, v):
+        if not v:
+            raise ValueError("Invalid fingerprint")
+        return v
+    

@@ -181,6 +181,33 @@ async def refresh_token(
             detail=f"Token refresh failed: {str(e)}"
         )
 
+
+@router.post(
+    "/auth/verify_fingerprint",
+    summary="Verify Fingerprint",
+    status_code=status.HTTP_200_OK,
+    response_model=schemas.SignUpResponse
+)
+async def verify_fingerprint(
+    fingerprint_data: schemas.FingerprintRequest,
+    request: Request,
+    db: Session = Depends(get_db)
+):
+    """
+    Verify the user's device fingerprint.
+    """
+    try:
+        result = await service.verify_fingerprint(fingerprint=fingerprint_data.fingerprint,email=fingerprint_data.email, db=db)
+        return result
+    except HTTPException as http_exc:
+        raise http_exc
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Fingerprint verification failed: {str(e)}"
+        )
+
+
 @router.get("/dashboard")
 async def dashboard(request: Request):
    

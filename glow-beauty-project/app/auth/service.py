@@ -660,6 +660,7 @@ async def refresh_access_token(refresh_token: str, request: Request, db: Session
     "token_type": "bearer"
 }
 
+
 async def get_service_logindetails(request: Request,db: Session):
     logger.info("=========== fetch API login details started ===========")
     access_token = request.headers.get("Authorization")
