@@ -168,3 +168,9 @@ class FingerprintRequest(BaseModel):
             raise ValueError("Invalid fingerprint")
         return v
     
+# ------------------ google OAuth2 Schema ------------------
+class GoogleLoginRequest(BaseModel):
+    email: str
+    name: str
+    profile_picture: str | None = None
+    token: str 

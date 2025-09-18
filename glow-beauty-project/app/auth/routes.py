@@ -214,3 +214,27 @@ async def verify_fingerprint(
 async def dashboard(request: Request):
    
     return {"message": f"Welcome to Dashboard !"}
+
+from fastapi import APIRouter, Depends, status, HTTPException
+from sqlalchemy.ext.asyncio import AsyncSession
+
+@router.post(
+    "/auth/google_login",
+    summary="Google Login",
+    status_code=status.HTTP_200_OK,
+    # response_model= JSONResponse
+)
+async def google_login(
+    request: schemas.GoogleLoginRequest,
+    db: AsyncSession = Depends(get_db)
+):
+    try:
+        result = await service.google_login(request, db)
+        return result
+    except HTTPException as http_exc:
+        raise http_exc
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Google login failed: {str(e)}"
+        )

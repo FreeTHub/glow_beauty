@@ -28,6 +28,10 @@ class User(RWModel):
     two_factor_secret = Column(String(255), nullable=True)
     fingerprint_template = Column(Text, nullable=True)  # bytea in PG = Text here
 
+    provider = Column(String(50), default="local", nullable=False)  # local, google, facebook, etc.
+    google_token = Column(String(255), nullable=True)  # ID from the provider
+    profile_picture = Column(String(255), nullable=True)  # URL to profile picture
+    
     roles = relationship("UserRole", back_populates="user", cascade="all, delete-orphan")
     # info = relationship("UserInfo", back_populates="user", uselist=False, cascade="all, delete-orphan")
     email_verifications = relationship("EmailVerification", back_populates="user", cascade="all, delete-orphan")
