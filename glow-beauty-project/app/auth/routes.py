@@ -151,8 +151,6 @@ async def logout(request: Request,
             detail=f"Logout failed: {str(e)}"
         )
 
-
-
 @router.post(
     "/auth/refresh_token",
     summary="Refresh Access Token",
@@ -238,3 +236,74 @@ async def google_login(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Google login failed: {str(e)}"
         )
+
+@router.get("/getapilogindetails",
+            summary="Get Login Details",
+            status_code=status.HTTP_200_OK,
+            response_model=schemas.GetLoginResponse
+            )
+async def getlogin_details(
+    request:Request,
+    db: Session=Depends(get_db)
+    ):    
+    try:
+        result=await service.get_service_logindetails(
+            request=request,
+            db=db
+        )
+        return result
+    except HTTPException as http_exc:
+        raise http_exc
+    except Exception as e :
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Fetch Login Details Failed {str(e)}"
+        )
+
+@router.post("/auth/verifyloginotp",
+             summary="verify user login with OTP",
+             status_code=status.HTTP_200_OK,
+             )
+async def verify_login_otp(
+    request : schemas.VerifyLoginOTPRequest,
+    request1 : Request,
+    db : Session=Depends(get_db)
+    ):
+    try:
+        result=await service.verify_loginwithotp_service(
+            request=request,
+            request1=request1,
+            db=db
+        )
+        return {
+            "status":"success",
+            "message":"OTP verified successfully",
+            "data":result
+        }
+    except HTTPException as http_exc:
+        raise http_exc
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"OTP verification failed: {str(e)}"
+        )
+
+@router.post("/auth/ForgetPassword_OTPRequest",
+             summary="Forget Password Request with OTP",
+             status_code=status.HTTP_200_OK,)
+async def forgetpasswordotprequest(
+    data:schemas.ForgetPasswordOTPRequest,
+    request:Request,
+    db:Session=Depends(get_db)
+) :
+    try :
+        result=await service.forgetpassword_otprequest_service(data,request,db)
+        return result
+    except HTTPException as http_exc:
+        raise http_exc
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"OTP request failed{e}"
+        )
+    

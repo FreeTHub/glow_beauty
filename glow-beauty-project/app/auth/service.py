@@ -5,7 +5,7 @@ from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
 from app.auth import models, schemas, utils
 from app.auth.models import LoginAttempt, OtpCode, RefreshToken, Role, User, EmailVerification,UserRole
-from app.auth.schemas import GoogleLoginRequest, LogOTPRequest, LoginRequest, LoginResponse, SignUpRequest, SignUpVerifyRequest, UserOut ,SignUpResponse
+from app.auth.schemas import GoogleLoginRequest, LogOTPRequest, GetLoginResponse, LoginRequest, LoginResponse, SignUpRequest, SignUpVerifyRequest, UserOut ,SignUpResponse,VerifyLoginOTPRequest,ForgetPasswordOTPRequest
 from app.auth.utils import generate_otp, get_client_ip, get_user_agent, hash_password, hash_token, store_otp_email, verify_password
 from app.core.config import settings
 from sqlalchemy.exc import SQLAlchemyError
@@ -605,7 +605,7 @@ async def refresh_access_token(refresh_token: str, request: Request, db: Session
         raise HTTPException(status_code=401, detail="Invalid refresh token")
 
     hashed = hash_token(refresh_token)
-    logger
+   
     stored_token = db.query(RefreshToken).filter_by(token=hashed, revoked=False).first()
     logger.info(f"Stored token: {stored_token}")
 
@@ -660,6 +660,45 @@ async def refresh_access_token(refresh_token: str, request: Request, db: Session
     "token_type": "bearer"
 }
 
+
+async def get_service_logindetails(request: Request,db: Session):
+    logger.info("=========== fetch API login details started ===========")
+    access_token = request.headers.get("Authorization")
+   # original_token = access_token[:7]
+    logger.info(access_token[7:])
+    payload = verify_token(access_token)
+    logger.info(f"Token Payload : {payload}")
+    if not payload:
+        logger.error("===========Invalid access token===========")
+        raise HTTPException(status_code=401,detail="Invalid access token")
+    
+    logger.info(f"expiry time {payload['exp']}")
+    exp_time=datetime.fromtimestamp(payload['exp'],tz=timezone.utc)
+    now=datetime.now(timezone.utc)
+    logger.info(f"current time {now} and expiry time {exp_time}")
+
+    if now>exp_time :
+        logger.error("=========== token expired ===========")
+        raise HTTPException(status_code=401,detail="token expired")
+    user_data = db.query(User).filter(User.email == payload.get('sub')).first()
+    logger.info(user_data)
+    if not user_data:
+        raise HTTPException(status_code=404,detail='Use not found')
+    return GetLoginResponse(
+        status="success",
+        message="Login details retrieved successfully",
+        email=payload.get('sub'),
+        name=payload.get('name'),
+        role=payload.get('role'),
+        phone_no=user_data.phone_no,
+        is_active=user_data.is_active,
+        is_verified_phone=user_data.is_verified_phone,
+        failed_logins=user_data.failed_logins,
+        lock_until=user_data.lock_until,
+        fingerprint_template=user_data.fingerprint_template
+        
+        
+    )
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 security = HTTPBearer() 
 async def logout(
@@ -723,60 +762,193 @@ async def logout(
             detail="Internal server error"
         )
     
-#fingerprint service  
-from passlib.hash import bcrypt
+async def verify_loginwithotp_service(request : VerifyLoginOTPRequest,request1:Request,db : Session) :
+    try: 
+        logger.info("================ verifying login OTP ====================")
 
-def hash_fingerprint(fingerprint: str) -> str:
-    return bcrypt.hash(fingerprint)
+        # user=db.query(User).filter(User.email == request.email).first()
+        result = db.execute(select(User).filter_by(email=request.email))
+        user: Optional[User] = result.scalars().first()
 
-def verify_fingerprint_hash(fingerprint: str, stored_hash: str) -> bool:
-    return bcrypt.verify(fingerprint, stored_hash)
-
-
-async def verify_fingerprint(fingerprint: str, email: str, db: Session) -> JSONResponse:
-    """
-    If fingerprint not stored → save it (hashed).
-    If stored → verify against hash.
-    """
-    try:
-        # 1. Find the user
-        user = db.query(User).filter_by(email=email).first()
         if not user:
+            logger.warning(f"Login failed: user not found - {request.email}")
             raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="User not found"
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid email or password",
+                headers={"WWW-Authenticate": "Bearer"},
             )
 
-        # 2. If no fingerprint stored → register new one
-        if not user.fingerprint_template:
-            user.fingerprint_template = hash_fingerprint(fingerprint)
+        logger.info(f"User found: {user.email}")
+
+        # if not user :
+        #     logger.error("============ User Not Found =============")
+        #     raise HTTPException(status_code=404,detail="user not found")
+        # logger.info("AFTER USER QUERY")
+        otp_entry = (
+                db.query(OtpCode)
+                .filter(
+                OtpCode.email == request.email,
+                OtpCode.otp_code == request.otp,
+                OtpCode.expires_at> datetime.now(timezone.utc),
+                OtpCode.used == False,
+                OtpCode.method == "login_email"
+                )
+                .order_by(OtpCode.created_at.desc())  # latest OTP
+                .first()
+        )
+        if not otp_entry :
+            logger.error("============ Invalid OTP =============")
+            raise HTTPException(status_code=400, detail="Invalid OTP / OTP Already Used ")  
+        
+        otp_entry.used = True
+        logger.info(" BEFORE ACCESSS TOKEN ")
+        # access_token=create_access_token(
+        #     {"sub": user.email,"name" : user.name,"role" : user.role},)
+      
+        # role_row=(
+        #     db.query(Role.name)
+        # .join(UserRole,Role.id==UserRole.user_id)
+        # .join(User,User.id==UserRole.user_id)
+        # .filter(User.email==request.email)
+        # .first()
+        # )
+        # role_name=role_row[0] if role_row else None
+        # logger.info(f"Role==>{role_name}")
+
+        role_row = (
+        db.query(Role.name)
+        .join(UserRole, Role.id == UserRole.role_id)
+        .join(User, User.id == UserRole.user_id)
+        .filter(User.email == request.email)
+        .first()
+    )
+
+        role_name = role_row[0] if role_row else None
+        logger.info(f"Role==>{role_name}")
+        
+        access_token = create_access_token(data=
+                                            {"sub": user.email,"role":role_name,
+                                                "name":user.full_name})
+        logger.info(access_token)
+
+       # Get device ID from headers
+        device_id = request1.get("Device-ID")
+        logger.info(device_id )
+        # Revoke old refresh token
+        result=db.execute(
+                        select(RefreshToken)
+                          .filter_by(user_id=user.id,revoked=False,device_id=device_id)
+                          .order_by(RefreshToken.expires_at.desc())
+                          )
+        existing_token=result.scalars().first()
+        if existing_token :
+            existing_token.revoked=True
+            existing_token.replaced_by_token=None
             db.commit()
-            return JSONResponse(
-                status_code=status.HTTP_200_OK,
-                content={"status": "success", "message": "Fingerprint stored successfully"}
-            )
-
-        # 3. If fingerprint exists → verify
-        if verify_fingerprint_hash(fingerprint, user.fingerprint_template):
-            return JSONResponse(
-                status_code=status.HTTP_200_OK,
-                content={"status": "success", "message": "Fingerprint verified successfully"}
-            )
-
-        # 4. If mismatch
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Fingerprint verification failed"
+        # Create New Refresh Token
+        refresh_token=create_refresh_token(data={"sub": user.email,"role":role_name,"name":user.full_name})
+        hashed_refresh_token=hash_token(refresh_token)
+        expired_at=datetime.now(timezone.utc)+timedelta(minutes=settings.REFRESH_TOKEN_EXPIRE_DAYS)
+        logger.info(f"expires_at:{expired_at}")
+        new_refresh_token=RefreshToken(
+            user_id=user.id,
+            token=hashed_refresh_token,
+            expires_at=expired_at,
+            revoked=False,
+            user_agent=get_user_agent(request1),
+            device_id=device_id,
+            created_at=datetime.now(timezone.utc)
         )
 
-    except HTTPException:
-        raise
+        db.add(new_refresh_token)
+        db.commit()
+        db.refresh(new_refresh_token)
+
+
+        logger.info("================ OTP verified tokens generated ================")
+        logger.info(new_refresh_token)
+
+        return LoginResponse(
+            status="success",
+            message="OTP verified successfully",
+            access_token=access_token,
+            refresh_token=refresh_token,
+            user=UserOut.from_orm(user)
+
+        )
+    except HTTPException as e:
+            raise e
+
+    except SQLAlchemyError as e:
+            db.rollback()
+            logger.error(f"Database error during login: {e}")
+            traceback.print_exc()
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Database error during login."
+            )
+
     except Exception as e:
-        logger.error(f"Fingerprint verification failed: {str(e)}", exc_info=True)
+            db.rollback()
+            logger.error(f"Unexpected error during login: {e}")
+            traceback.print_exc()
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Unexpected error during login."
+            )
+    
+async def forgetpassword_otprequest_service(user_data:ForgetPasswordOTPRequest,request:Request,db:Session) -> JSONResponse:
+    if not db.query(User).filter(User.email==user_data.email).first():
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="user not registered"
+        )
+    
+    try:
+        existing_otp=db.query(OtpCode).filter(
+            OtpCode.email==user_data.email,
+            OtpCode.method=="forget_otp",
+            OtpCode.used==False,
+            OtpCode.expires_at>datetime.now(timezone.utc)
+        ).first()
+        if existing_otp:
+            logger.info(f"OTP already exist for{user_data.email}.cant proceed")
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="OTP already sent to this email. Please verify before Log In."
+            ) 
+        otp=generate_otp()
+        logger.info(f"generated otp for {user_data.email}:{otp}")
+        store_otp_email(user_data.email,otp,db,method="forget_otp")
+        logger.info("============= OTP stored successfully in DB =============")
+
+        return JSONResponse(
+            {
+                "status":"otp_sent",
+                "message":"otp sent to your mail.please verify to forget password"
+            }
+        )
+    except SQLAlchemyError as e:
+        db.rollback()
+        logger.error("database error during forget password:%s",str(e))
+        traceback.print_exc()
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Internal server error"
+            detail="database error during forget password"
         )
+    except HTTPException as http_exc:
+        raise http_exc
+    except Exception as e:
+        db.rollback()
+        logger.error("Unexpected error during forget password: %s", str(e))
+        traceback.print_exc()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Forget password failed due to unexpected server error."
+        )
+
+
+
 # service.py
 
 async def google_login(request, db: AsyncSession):

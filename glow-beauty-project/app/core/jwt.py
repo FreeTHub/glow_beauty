@@ -72,6 +72,9 @@ def verify_token(token: str):
     try:
         logger.info(f"Verifying token: {token}")
         logger.info(f"Public key: {settings.PUBLIC_KEY} === Algorithm: {settings.ALGORITHM}")
+        if token.startswith("Bearer "):
+            token = token[len("Bearer "):]
+
         payload = jwt.decode(
             token,
             settings.PUBLIC_KEY,

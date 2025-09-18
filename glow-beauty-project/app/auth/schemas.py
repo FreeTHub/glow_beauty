@@ -2,7 +2,7 @@
 
 from datetime import datetime
 from typing import Optional
-from pydantic import BaseModel, EmailStr, Field, field_validator
+from pydantic import BaseModel, EmailStr, Field, field_validator,constr
 import re
 
 # ------------------ Base Schema ------------------
@@ -155,7 +155,43 @@ class RefreshTokenResponse(BaseModel):
     model_config = {
         "from_attributes": True
     }
+#-------------------- Get Login Details -------------------------
+class GetLoginRequest(BaseModel):
+    access_token: str
 
+class GetLoginResponse(BaseModel):
+    status: str
+    message: str
+    name: str
+    email: EmailStr
+    role: str
+    phone_no: int
+    is_active: bool
+    is_verified_phone: bool
+    failed_logins: int
+    lock_until: datetime
+    fingerprint_template: str
+
+#---------------------- Verification of Login OTP ------------------------
+
+class VerifyLoginOTPRequest(BaseModel):
+    email: EmailStr = Field(..., description="User email")
+    otp: str = Field(..., min_length=6, max_length=6)
+    
+    @field_validator("otp")
+    def validate_otp(cls, v):
+        if not re.match(r'^\d{6}$', str(v)):
+            raise ValueError("OTP must be a 6-digit number")
+        return v
+
+#--------------------- OTP request for forget password ------------------------
+class ForgetPasswordOTPRequest(BaseModel):
+    email:EmailStr
+    @field_validator("email")
+    def validate_email(cls,v):
+        if not re.match(r'^[\w\.-]+@[\w\.-]+\.\w+$',str(v)):
+            raise ValueError("Invalid Email Format")
+        return v
 #------------------ Fingerprint Schema ------------------
 class FingerprintRequest(BaseModel):
     fingerprint: str
